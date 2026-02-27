@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { PatientFormData, PatientFormErrors } from "@/types/patient";
 import {
   isValidCpf,
@@ -7,6 +7,12 @@ import {
   dateToIsoFormat,
 } from "../utils/validation";
 import { createPatient } from "@/application/services/patientService";
+
+type ScreenState = 
+  | { type: 'idle' }
+  | { type: 'submitting' }
+  | { type: 'success'; message: string }
+  | { type: 'error' };
 
 export function useCreatePatient() {
   const [formData, setFormData] = useState<PatientFormData>({
@@ -17,10 +23,9 @@ export function useCreatePatient() {
   });
 
   const [errors, setErrors] = useState<PatientFormErrors>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
+  const [screenState, setScreenState] = useState<ScreenState>({ type: 'idle' });
 
-  function validateField(fieldName: keyof PatientFormData, value: string): string | undefined {
+  const validateField = useCallback((fieldName: keyof PatientFormData, value: string): string | undefined => {
     switch (fieldName) {
       case "fullName":
         if (!value.trim()) {
@@ -61,31 +66,9 @@ export function useCreatePatient() {
       default:
         return undefined;
     }
-  }
+  }, []);
 
-  function handleFieldChange(fieldName: keyof PatientFormData, value: string) {
-    setFormData((prev) => ({
-      ...prev,
-      [fieldName]: value,
-    }));
-
-    setErrors((prev) => ({
-      ...prev,
-      [fieldName]: undefined,
-    }));
-
-    setSuccessMessage("");
-  }
-
-  function handleFieldBlur(fieldName: keyof PatientFormData) {
-    const error = validateField(fieldName, formData[fieldName]);
-    setErrors((prev) => ({
-      ...prev,
-      [fieldName]: error,
-    }));
-  }
-
-  function validateAllFields(): boolean {
+  const validateAllFields = useCallback((): boolean => {
     const newErrors: PatientFormErrors = {
       fullName: validateField("fullName", formData.fullName),
       cpf: validateField("cpf", formData.cpf),
@@ -96,16 +79,16 @@ export function useCreatePatient() {
     setErrors(newErrors);
 
     return !Object.values(newErrors).some((error) => error !== undefined);
-  }
+  }, [formData, validateField]);
 
-  async function handleSubmit() {
-    setSuccessMessage("");
+  const submitPatient = useCallback(async () => {
+    setScreenState({ type: 'idle' });
 
     if (!validateAllFields()) {
       return;
     }
 
-    setIsLoading(true);
+    setScreenState({ type: 'submitting' });
 
     try {
       const patientDataToSave = {
@@ -115,7 +98,7 @@ export function useCreatePatient() {
 
       await createPatient(patientDataToSave);
 
-      setSuccessMessage("Paciente cadastrado com sucesso!");
+      setScreenState({ type: 'success', message: 'Paciente cadastrado com sucesso!' });
       setFormData({
         fullName: "",
         cpf: "",
@@ -126,34 +109,35 @@ export function useCreatePatient() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erro ao cadastrar paciente";
       
+      setScreenState({ type: 'error' });
+      
       if (errorMessage.includes("CPF")) {
-        setErrors({
-          ...errors,
+        setErrors((prev) => ({
+          ...prev,
           cpf: errorMessage,
-        });
+        }));
       } else if (errorMessage.includes("e-mail")) {
-        setErrors({
-          ...errors,
+        setErrors((prev) => ({
+          ...prev,
           email: errorMessage,
-        });
+        }));
       } else {
-        setErrors({
-          ...errors,
+        setErrors((prev) => ({
+          ...prev,
           email: errorMessage,
-        });
+        }));
       }
-    } finally {
-      setIsLoading(false);
     }
-  }
+  }, [formData, validateAllFields]);
 
   return {
     formData,
+    setFormData,
     errors,
-    isLoading,
-    successMessage,
-    handleFieldChange,
-    handleFieldBlur,
-    handleSubmit,
+    setErrors,
+    screenState,
+    setScreenState,
+    validateField,
+    submitPatient,
   };
 }

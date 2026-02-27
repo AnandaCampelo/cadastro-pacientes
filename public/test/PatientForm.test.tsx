@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { PatientForm } from '../features/patient/components/PatientForm';
+import { PatientForm } from '@/features/patient/components/PatientForm';
 
 describe('PatientForm', () => {
   it('deve exibir mensagens de erro quando tentar salvar com campos vazios', async () => {

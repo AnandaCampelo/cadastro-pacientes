@@ -1,7 +1,7 @@
-import { PatientRegistrationScreen } from "./screens/PatientRegistrationScreen";
+import { LoginScreen } from "./screens/LoginScreen";
 
 function App() {
-  return <PatientRegistrationScreen />;
+  return <LoginScreen />;
 }
 
 export default App;
